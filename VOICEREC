@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Recorder</title>
+    <style>
+        #controls {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Audio Recorder</h2>
+    <button id="startButton">Start Recording</button>
+    <button id="stopButton" disabled>Stop Recording</button>
+    <div id="controls"></div>
+    <div id="message"></div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        async function startRecording() {
+            try {
+                let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    let audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    let audioUrl = URL.createObjectURL(audioBlob);
+                    let audio = new Audio(audioUrl);
+
+                    let downloadLink = document.createElement('a');
+                    downloadLink.href = audioUrl;
+                    downloadLink.download = 'recording.wav';
+                    downloadLink.innerText = 'Download Recording';
+
+                    let saveLink = document.createElement('button');
+                    saveLink.innerText = 'Save File';
+                    saveLink.onclick = () => saveFile(audioBlob);
+
+                    document.getElementById('controls').innerHTML = '';
+                    document.getElementById('controls').appendChild(audio);
+                    document.getElementById('controls').appendChild(downloadLink);
+                    document.getElementById('controls').appendChild(saveLink);
+                    audioChunks = [];
+                };
+
+                mediaRecorder.start();
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('stopButton').disabled = false;
+                document.getElementById('message').innerText = 'Recording...';
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                document.getElementById('message').innerText = 'Error accessing microphone: ' + error.message;
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('stopButton').disabled = true;
+                document.getElementById('message').innerText = 'Recording stopped.';
+            } else {
+                document.getElementById('message').innerText = 'No recording to stop.';
+            }
+        }
+
+        function saveFile(blob) {
+            const formData = new FormData();
+            formData.append('file', blob, 'recording.wav');
+
+            fetch('YOUR_SERVER_ENDPOINT_HERE', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('File saved successfully: ' + data.file
